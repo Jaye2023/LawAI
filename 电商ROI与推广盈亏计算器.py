@@ -4,7 +4,7 @@ from tkinter import ttk
 class ROICalculator:
     def __init__(self, root):
         self.root = root
-        self.root.title("电商ROI与推广盈亏计算器")
+        self.root.title("电商ROI与推广盈亏计算器 - 增强版")
         self.create_widgets()
 
     def create_widgets(self):
@@ -20,6 +20,7 @@ class ROICalculator:
             ("赠品成本（元）", "gift_cost"),
             ("退款率（%）", "refund_rate"),
             ("其他成本（元）", "other_cost"),
+            ("销量（件）", "sales_volume"),  # 新增销量字段
             ("实际花费（元）", "ad_cost")
         ]
 
@@ -37,6 +38,14 @@ class ROICalculator:
         result_frame = ttk.LabelFrame(self.root, text="计算结果")
         result_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
 
+        # 修复后的结果标签配置
+        result_labels = [
+            ("保本ROI", "保本ROI"),
+            ("利润率", "利润率"),
+            ("实际ROI", "实际ROI"),
+            ("推广盈亏", "推广盈亏")
+        ]
+        
         self.results = {
             "保本ROI": tk.StringVar(),
             "利润率": tk.StringVar(),
@@ -44,9 +53,9 @@ class ROICalculator:
             "推广盈亏": tk.StringVar()
         }
 
-        for i, (label, key) in enumerate(self.results.items()):
-            ttk.Label(result_frame, text=label+":").grid(row=i, column=0, padx=5, pady=2, sticky="e")
-            ttk.Label(result_frame, textvariable=self.results[key]).grid(row=i, column=1, padx=5, pady=2, sticky="w")
+        for i, (label_key, display_text) in enumerate(result_labels):
+            ttk.Label(result_frame, text=display_text+":").grid(row=i, column=0, padx=5, pady=2, sticky="e")
+            ttk.Label(result_frame, textvariable=self.results[label_key]).grid(row=i, column=1, padx=5, pady=2, sticky="w")
 
     def get_float(self, key, default=0.0):
         try:
@@ -63,6 +72,7 @@ class ROICalculator:
         gift_cost = self.get_float("gift_cost")
         refund_rate = self.get_float("refund_rate") / 100    # 转换为小数
         other_cost = self.get_float("other_cost")
+        sales_volume = self.get_float("sales_volume", default=1.0)  # 获取销量
         ad_cost = self.get_float("ad_cost")
 
         # 核心计算逻辑
@@ -72,9 +82,10 @@ class ROICalculator:
         net_profit = sales_price - total_cost
         profit_margin = (net_profit / sales_price * 100) if sales_price != 0 else 0
         
-        breakeven_roi = total_cost / net_profit if net_profit != 0 else 0
-        actual_roi = (net_profit * 1) / ad_cost if ad_cost != 0 else 0  # 默认销量1件
-        profit_loss = net_profit * 1 - ad_cost  # 默认销量1件
+        # 修正保本ROI公式
+        breakeven_roi = total_cost / (net_profit * (1 - refund_rate)) if (net_profit != 0 and refund_rate < 1) else 0
+        actual_roi = (net_profit * sales_volume) / ad_cost if ad_cost != 0 else 0
+        profit_loss = net_profit * sales_volume - ad_cost
 
         # 显示结果
         self.results["保本ROI"].set(f"{abs(breakeven_roi):.2f}" if breakeven_roi != 0 else "N/A")
